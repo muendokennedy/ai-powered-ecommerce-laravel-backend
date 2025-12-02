@@ -37,4 +37,5 @@ class Authenticate extends BaseAuthenticate
         }
         return parent::handle($request, $next, ...$guards);
     }
+
 }
