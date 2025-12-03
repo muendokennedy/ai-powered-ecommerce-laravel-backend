@@ -21,9 +21,11 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): Response
     {
+
+        
         $request->validate([
             'fullName' => ['required', 'string'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.Admin::class],
             'phone' => ['required', 'string'],
             'department' => ['required', 'string'],
             'location' => ['required', 'string'],
@@ -31,7 +33,11 @@ class RegisteredUserController extends Controller
         ]);
 
         $admin = Admin::create([
+            'fullName' => $request->fullName,
             'email' => $request->email,
+            'phone' => $request->phone,
+            'department' => $request->department,
+            'location' => $request->location,
             'password' => Hash::make($request->string('password')),
         ]);
 
@@ -39,6 +45,6 @@ class RegisteredUserController extends Controller
 
         Auth::guard('admin')->login($admin);
 
-        return response()->noContent();
+        return response(['message' => 'admin created successfully']);
     }
 }
