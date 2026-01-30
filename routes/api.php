@@ -4,13 +4,18 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AdminAuth\AuthenticatedSessionController;
 
-Route::middleware(['auth:sanctum'])->get('/admin/dashboard', function (Request $request) {
-
-    return response()->json([
+Route::group(['middleware' => ['auth:sanctum']], function() {
+    Route::get('/admin/dashboard', function(Request $request){
+        return response()->json([
         'admin' => $request->user()
-    ]);
+        ]);
+    })->name('admin.dashboard');
 
-})->name('admin.dashboard');
+    // Admin Product Resource Management
+    Route::post('/admin/product/add', function(Request $request){
+
+    })->name('admin.product.add');
+});
 
 Route::post('admin/logout', [AuthenticatedSessionController::class, 'destroy'])
     ->middleware('auth:sanctum')
