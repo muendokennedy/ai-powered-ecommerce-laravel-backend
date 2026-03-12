@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Product extends Model
 {
@@ -12,6 +13,8 @@ class Product extends Model
         'product_sku_id',
         'name',
         'brand',
+        'supplier',
+        'category',
         'description',
         'specifications',
         'base_price',
@@ -20,7 +23,10 @@ class Product extends Model
         'status',
         'stock_quantity',
         'low_stock_threshold',
-        'category_id',
-        'supplier_id',
     ];
+
+    public function images(): HasMany
+    {
+        return $this->hasMany(ProductImage::class);
+    }
 }

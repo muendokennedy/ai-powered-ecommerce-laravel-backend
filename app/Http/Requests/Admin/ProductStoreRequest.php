@@ -25,12 +25,14 @@ class ProductStoreRequest extends FormRequest
             //
             'name' => ['required', 'string', 'max:255'],
             'brand' => ['required', 'string', 'max:255'],
+            'category' => ['required', 'string', 'max:255'],
+            'supplier' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string'],
             'specifications' => ['required', 'json'],
             'base_price' => ['required', 'numeric', 'min:0'],
             'discount_price' => ['required', 'numeric', 'min:0', 'lte:base_price'],
             'vat_rate' => ['required', 'numeric', 'between:0,1'],
-            'status' => ['required', 'string', 'in:active,inactive'],
+            'status' => ['required', 'string', 'in:in stock,out of stock,low stock'],
             'stock_quantity' => ['required', 'integer', 'min:0'],
             'low_stock_threshold' => ['required', 'integer', 'min:0'],
             

@@ -3,15 +3,20 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ProductImage extends Model
 {
     //
 
     protected $fillable = [
-        'primary_image_url', 
-        'second_image_url', 
-        'third_image_url',
-        'product_id'
+        'product_id', 
+        'image_type', 
+        'image_path',
         ];
+    
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class);
+    }
 }
