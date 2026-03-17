@@ -19,7 +19,9 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return response()->noContent();
+        $authUser = auth('web')->user();
+
+        return response(['user' => $authUser]);
     }
 
     /**

@@ -34,6 +34,8 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
-        return response()->noContent();
+        $authUser = auth('web')->user();
+
+        return response(['user' => $authUser]);
     }
 }
