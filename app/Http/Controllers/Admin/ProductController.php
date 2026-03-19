@@ -127,8 +127,22 @@ class ProductController extends Controller
             ]);
         }
     }
-    public function destroy()
+    public function destroy(Product $product)
     {
+        DB::transaction(function () use ($product) {
+            $images = $product->images()->get();
 
+            foreach ($images as $image) {
+                Storage::disk('public')->delete($image->image_path);
+            }
+
+            $product->images()->delete();
+
+            $product->delete();
+        });
+
+        return response()->json([
+            'message' => 'Product deleted successfully'
+        ]);
     }
 }
