@@ -5,13 +5,13 @@ namespace App\Http\Controllers\Client;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 
-class PageController extends Controller
+class PagesController extends Controller
 {
     //
 
     public function ProductsPage()
     {
-        $products = Product::all();
+        $products = Product::with('images')->get();
 
       return response()->json([
         'products' => $products

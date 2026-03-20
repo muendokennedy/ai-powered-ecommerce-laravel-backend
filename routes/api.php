@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\PageController;
+use App\Http\Controllers\Client\PagesController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\AdminAuth\AuthenticatedSessionController;
 use App\Http\Controllers\CartController;
@@ -21,7 +22,7 @@ Route::group(['middleware' => ['auth:sanctum']], function() {
     // Cart Management
     Route::post('/cart/product/add', [CartController::class, 'addProduct'])->name('cart.product.add');
     // Client pages
-    Route::get('/products', [PageController::class, 'productsPage'])->name('client.page.products');
+    Route::get('/products', [PagesController::class, 'productsPage'])->name('client.page.products');
 });
 
 Route::post('admin/logout', [AuthenticatedSessionController::class, 'destroy'])
