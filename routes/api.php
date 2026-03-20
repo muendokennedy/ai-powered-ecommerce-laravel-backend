@@ -20,6 +20,8 @@ Route::group(['middleware' => ['auth:sanctum']], function() {
     Route::delete('/admin/product/delete/{product}', [ProductController::class, 'destroy'])->name('admin.product.destroy');
     // Cart Management
     Route::post('/cart/product/add', [CartController::class, 'addProduct'])->name('cart.product.add');
+    // Client pages
+    Route::get('/products', [PageController::class, 'productsPage'])->name('client.page.products');
 });
 
 Route::post('admin/logout', [AuthenticatedSessionController::class, 'destroy'])
