@@ -19,11 +19,12 @@ Route::group(['middleware' => ['auth:sanctum']], function() {
     Route::post('/admin/product/add', [ProductController::class, 'store'])->name('admin.product.add');
     Route::post('/admin/product/update/{product}', [ProductController::class, 'update'])->name('admin.product.update');
     Route::delete('/admin/product/delete/{product}', [ProductController::class, 'destroy'])->name('admin.product.destroy');
-    // Cart Management
-    Route::post('/cart/product/add', [CartController::class, 'addProduct'])->name('cart.product.add');
-    // Client pages
-    Route::get('/products', [PagesController::class, 'productsPage'])->name('client.page.products');
+    
 });
+
+Route::post('/cart/product/add/{product}', [CartController::class, 'addProduct'])->name('cart.product.add');
+
+Route::get('/products', [PagesController::class, 'productsPage'])->name('client.page.products');
 
 Route::post('admin/logout', [AuthenticatedSessionController::class, 'destroy'])
     ->middleware('auth:sanctum')
