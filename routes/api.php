@@ -27,7 +27,9 @@ Route::post('/cart/products', [CartController::class, 'cartItems'])->name('cart.
 Route::delete('/cart/items/{cartItemId}', [CartController::class, 'removeItem'])->name('cart.item.remove');
 Route::post('/cart/items/{cartItemId}/update-quantity', [CartController::class, 'updateItemQuantity'])->name('cart.item.update-quantity');
 
-Route::get('/products', [PagesController::class, 'productsPage'])->name('client.page.products');
+Route::get('/index', [PagesController::class, 'HomePage'])->name('client.page.home');
+Route::get('/products', [PagesController::class, 'ProductsPage'])->name('client.page.products');
+Route::get('/product/page/{productId}', [PagesController::class, 'ProductPage'])->name('client.product.show');
 
 Route::post('admin/logout', [AuthenticatedSessionController::class, 'destroy'])
     ->middleware('auth:sanctum')
