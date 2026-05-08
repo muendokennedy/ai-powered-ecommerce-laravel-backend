@@ -30,6 +30,7 @@ Route::post('/cart/items/{cartItemId}/update-quantity', [CartController::class, 
 Route::get('/index', [PagesController::class, 'HomePage'])->name('client.page.home');
 Route::get('/products', [PagesController::class, 'ProductsPage'])->name('client.page.products');
 Route::get('/product/page/{productId}', [PagesController::class, 'ProductPage'])->name('client.product.show');
+Route::get('/products/{productId}/related', [PagesController::class, 'RelatedProducts'])->name('client.products.related');
 
 Route::post('admin/logout', [AuthenticatedSessionController::class, 'destroy'])
     ->middleware('auth:sanctum')

@@ -37,10 +37,28 @@ class PagesController extends Controller
       try{
         $product = Product::with('images')->where('id', $productId)->firstOrFail();
 
+        return response()->json([
+        'product' => $product
+      ]);
+      } catch (ModelNotFoundException $e){
+        return response()->json([
+          'message' => 'Product not found'
+        ], 404);
+      } catch (\Throwable $e){
+        return response()->json([
+          'error' => $e->getMessage()
+        ], 500);
+      }
+    }
+
+    public function RelatedProducts(string $productId)
+    {
+        try{
+        $product = Product::with('images')->where('id', $productId)->firstOrFail();
+
         $relatedProducts = $this->getRelatedProducts($product);
 
         return response()->json([
-        'product' => $product,
         'related_products' => $relatedProducts
       ]);
       } catch (ModelNotFoundException $e){
@@ -133,20 +151,20 @@ class PagesController extends Controller
         $score += $categoryPriorityMap[$currentCategory][$itemCategory] ?? 0;
 
         if($item->brand === $product->brand){
-          $score += 15;
-        }
-        if(($itemSpecs['RAM'] ?? null) === ($specs['RAM'] ?? null)){
           $score += 10;
         }
-        if(($itemSpecs['Storage'] ?? null) === ($specs['Storage'] ?? null)){
-          $score += 10;
-        }
-        if(($itemSpecs['Operating System'] ?? null) === ($specs['Operating System'] ?? null)){
-          $score += 10;
-        }
-        if(($itemSpecs['Display Size'] ?? null) === ($specs['Display Size'] ?? null)){
-          $score += 10;
-        }
+        // if(($itemSpecs['RAM'] ?? null) === ($specs['RAM'] ?? null)){
+        //   $score += 10;
+        // }
+        // if(($itemSpecs['Storage'] ?? null) === ($specs['Storage'] ?? null)){
+        //   $score += 10;
+        // }
+        // if(($itemSpecs['Operating System'] ?? null) === ($specs['Operating System'] ?? null)){
+        //   $score += 10;
+        // }
+        // if(($itemSpecs['Display Size'] ?? null) === ($specs['Display Size'] ?? null)){
+        //   $score += 10;
+        // }
         $item->similarity_score = $score;
 
         return $item;
