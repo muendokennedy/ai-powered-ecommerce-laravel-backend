@@ -15,7 +15,6 @@ return new class extends Migration
             //
             $table->string('category')->after('name');
             $table->string('supplier')->after('category');
-            $table->json('specifications')->after('supplier');
         });
     }
 
@@ -26,7 +25,7 @@ return new class extends Migration
     {
         Schema::table('products', function (Blueprint $table) {
             //
-            $table->dropColumn(['category', 'supplier', 'specifications']);
+            $table->dropColumn(['category', 'supplier']);
         });
     }
 };

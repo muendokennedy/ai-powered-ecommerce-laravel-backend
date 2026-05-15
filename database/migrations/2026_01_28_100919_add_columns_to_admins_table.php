@@ -13,9 +13,9 @@ return new class extends Migration
     {
         Schema::table('admins', function (Blueprint $table) {
             //
-            $table->json('permissions');
-            $table->string('role');
-            $table->boolean('status');
+            $table->json('permissions')->nullable();
+            $table->string('role')->nullable();
+            $table->boolean('status')->nullable();
         });
     }
 
