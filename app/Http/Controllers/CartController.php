@@ -247,4 +247,156 @@ class CartController extends Controller
             'item_count' => $cart->items()->count()
         ], 200);
     }
+
+    /**
+     * Get related products based on all items in the cart
+     * Considers all categories and brands from cart items
+     */
+    public function cartRelatedProducts(Request $request)
+    {
+        // Check if user is authenticated
+        if (!$request->user()) {
+            return response()->json([
+                'message' => 'Unauthorized. Please log in to view related products.',
+                'error' => 'unauthenticated'
+            ], 401);
+        }
+
+        try {
+            $user = $request->user();
+
+            // Get user's cart with products
+            $cart = $user->cart()->with('items.product')->first();
+
+            // If no cart exists, return empty related products
+            if (!$cart || $cart->items->isEmpty()) {
+                return response()->json([
+                    'message' => 'Cart is empty. No related products can be suggested.',
+                    'related_products' => []
+                ], 200);
+            }
+
+            // Extract all categories and brands from cart items
+            $cartProducts = $cart->items->map(function ($item) {
+                return $item->product;
+            });
+
+            $cartCategories = $cartProducts->pluck('category')->unique()->toArray();
+            $cartBrands = $cartProducts->pluck('brand')->unique()->toArray();
+            $cartProductIds = $cartProducts->pluck('id')->toArray();
+
+            $limit = 12;
+            $related = collect();
+
+            // Tier 1: Same category + same brand (from any cart item)
+            $tier1 = Product::with('images')
+                ->whereNotIn('id', $cartProductIds)
+                ->whereIn('category', $cartCategories)
+                ->whereIn('brand', $cartBrands)
+                ->limit($limit)
+                ->get();
+
+            $related = $related->concat($tier1);
+
+            // Tier 2: Same category + different brands
+            if ($related->count() < $limit) {
+                $needed = $limit - $related->count();
+                $tier2 = Product::with('images')
+                    ->whereNotIn('id', $cartProductIds)
+                    ->whereNotIn('id', $related->pluck('id'))
+                    ->whereIn('category', $cartCategories)
+                    ->whereNotIn('brand', $cartBrands)
+                    ->limit($needed)
+                    ->get();
+                $related = $related->concat($tier2);
+            }
+
+            // Tier 3: Different categories + same brand
+            if ($related->count() < $limit) {
+                $needed = $limit - $related->count();
+                $tier3 = Product::with('images')
+                    ->whereNotIn('id', $cartProductIds)
+                    ->whereNotIn('id', $related->pluck('id'))
+                    ->whereNotIn('category', $cartCategories)
+                    ->whereIn('brand', $cartBrands)
+                    ->limit($needed)
+                    ->get();
+                $related = $related->concat($tier3);
+            }
+
+            // Tier 4: Different categories + different brands
+            if ($related->count() < $limit) {
+                $needed = $limit - $related->count();
+                $tier4 = Product::with('images')
+                    ->whereNotIn('id', $cartProductIds)
+                    ->whereNotIn('id', $related->pluck('id'))
+                    ->whereNotIn('category', $cartCategories)
+                    ->whereNotIn('brand', $cartBrands)
+                    ->limit($needed)
+                    ->get();
+                $related = $related->concat($tier4);
+            }
+
+            // Apply scoring based on multiple cart items
+            $related = $related->map(function ($item) use ($cartProducts, $cartCategories, $cartBrands) {
+                $score = 0;
+
+                $categoryPriorityMap = [
+                    'phones' => [
+                        'phones' => 50,
+                        'laptops' => 40,
+                        'televisions' => 30,
+                        'smartwatches' => 20,
+                    ],
+                    'laptops' => [
+                        'laptops' => 50,
+                        'phones' => 40,
+                        'televisions' => 30,
+                        'smartwatches' => 20,
+                    ],
+                    'televisions' => [
+                        'televisions' => 50,
+                        'laptops' => 40,
+                        'phones' => 30,
+                        'smartwatches' => 20,
+                    ],
+                    'smartwatches' => [
+                        'smartwatches' => 50,
+                        'phones' => 40,
+                        'laptops' => 30,
+                        'televisions' => 20,
+                    ]
+                ];
+
+                $itemCategory = strtolower($item->category);
+
+                // Score based on all cart items
+                foreach ($cartProducts as $cartProduct) {
+                    $currentCategory = strtolower($cartProduct->category);
+                    
+                    // Add category priority score
+                    $score += $categoryPriorityMap[$currentCategory][$itemCategory] ?? 0;
+
+                    // Add brand match bonus
+                    if ($item->brand === $cartProduct->brand) {
+                        $score += 10;
+                    }
+                }
+
+                $item->similarity_score = $score;
+                return $item;
+            })->sortByDesc('similarity_score')->values();
+
+            return response()->json([
+                'message' => 'Related products retrieved successfully.',
+                'related_products' => $related,
+                'total_related' => $related->count()
+            ], 200);
+
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
