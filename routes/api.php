@@ -5,6 +5,7 @@ use App\Http\Controllers\Client\PagesController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\AdminAuth\AuthenticatedSessionController;
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\Client\OrderController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -36,4 +37,11 @@ Route::get('/products/{productId}/related', [PagesController::class, 'RelatedPro
 Route::post('admin/logout', [AuthenticatedSessionController::class, 'destroy'])
     ->middleware('auth:sanctum')
     ->name('logout');
+
+Route::post('/checkout', [OrderController::class, 'store'])->name('client.order.checkout');
+
+// Orders listing and details (controller performs auth checks)
+Route::post('/orders', [OrderController::class, 'index'])->name('client.orders.index');
+Route::post('/orders/{orderId}', [OrderController::class, 'show'])->name('client.orders.show');
+Route::delete('/orders/{orderId}/delete', [OrderController::class, 'destroy'])->name('client.orders.destroy');
 
