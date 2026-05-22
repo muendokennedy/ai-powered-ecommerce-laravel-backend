@@ -24,6 +24,10 @@ class Order extends Model
         'coordinates',
     ];
 
+    protected $hidden = [
+        'coordinates',
+    ];
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

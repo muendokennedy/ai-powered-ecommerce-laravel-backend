@@ -21,6 +21,8 @@ Route::group(['middleware' => ['auth:sanctum']], function() {
     Route::post('/admin/product/update/{product}', [ProductController::class, 'update'])->name('admin.product.update');
     Route::delete('/admin/product/delete/{product}', [ProductController::class, 'destroy'])->name('admin.product.destroy');
 
+    Route::get('/admin/orders', [PageController::class, 'Orders'])->name('admin.orders.index');
+
 });
 
 Route::post('/cart/product/add/{product}', [CartController::class, 'addProduct'])->name('cart.product.add');

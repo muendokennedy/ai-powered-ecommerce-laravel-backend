@@ -84,9 +84,11 @@ class PageController extends Controller
     }
     public function Orders()
     {
-        return response()->json([
-            'orders' => 'orders'
-        ]);
+    $allOrders = Order::with(['user', 'items', 'paymentDetail'])->latest()->get();
+
+      return response()->json([
+        'allOrders' => $allOrders
+      ]);
     }
     public function ClientInfo()
     {

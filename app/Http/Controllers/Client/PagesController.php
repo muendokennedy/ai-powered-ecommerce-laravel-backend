@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
+use App\Models\Order;
 use App\Models\Product;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
@@ -171,5 +172,15 @@ class PagesController extends Controller
       })->sortByDesc('similarity_score')->values();
 
       return $related;
+    }
+
+    public function OrdersPage()
+    {
+
+    $allOrders = Order::with(['user', 'items', 'paymentDetail'])->latest()->get();
+
+      return response()->json([
+        'allOrders' => $allOrders
+      ]);
     }
 }

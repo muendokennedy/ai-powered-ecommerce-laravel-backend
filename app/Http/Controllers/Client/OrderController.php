@@ -84,6 +84,7 @@ class OrderController extends Controller
 
             // Create order items
             $items = data_get($payload, 'order.items', []);
+
             foreach ($items as $item) {
                 $product = Product::find($item['id']);
                 $price = $item['price'] ?? ($product?->base_price ?? 0);
