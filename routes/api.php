@@ -47,3 +47,5 @@ Route::post('/orders', [OrderController::class, 'index'])->name('client.orders.i
 Route::post('/orders/{orderId}', [OrderController::class, 'show'])->name('client.orders.show');
 Route::delete('/orders/{orderId}/delete', [OrderController::class, 'destroy'])->name('client.orders.destroy');
 
+Route::post('admin/orders/{orderId}/status/update', [OrderController::class, 'adminUpdateStatus'])->name('admin.orders.status.update');
+Route::delete('admin/orders/{orderId}/delete', [OrderController::class, 'adminDestroy'])->name('admin.orders.destroy');

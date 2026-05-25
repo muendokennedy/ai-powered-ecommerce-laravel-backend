@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class OrderController extends Controller
 {
@@ -264,5 +265,68 @@ class OrderController extends Controller
         $order->delete();
 
         return response()->json(['success' => true, 'message' => 'Order cancelled']);
+    }
+
+    /**
+     * Admin: delete an order by id.
+     * Route: admin/orders/{orderId}/delete
+     */
+    public function adminDestroy(Request $request, $orderId): JsonResponse
+    {
+        $admin = auth()->guard('admin')->user();
+        if (!$admin) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated (admin)'], 401);
+        }
+
+        $order = Order::find($orderId);
+        if (!$order) {
+            return response()->json(['success' => false, 'message' => 'Order not found'], 404);
+        }
+
+        try {
+            $order->delete();
+            return response()->json(['success' => true, 'message' => 'Order deleted']);
+        } catch (\Throwable $e) {
+            Log::error('Admin order delete failed: '.$e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Could not delete order'], 500);
+        }
+    }
+
+    /**
+     * Admin: update order status.
+     * Route: admin/orders/{orderId}/status/update
+     */
+    public function adminUpdateStatus(Request $request, $orderId): JsonResponse
+    {
+        $admin = auth()->guard('admin')->user();
+        if (!$admin) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated (admin)'], 401);
+        }
+
+        $status = $request->input('status');
+        if ($status === null) {
+            return response()->json(['success' => false, 'message' => 'Status is required'], 422);
+        }
+
+        $status = trim(strtolower($status));
+        $allowed = ['pending', 'processing', 'in transit', 'delivered', 'cancelled'];
+        if (!in_array($status, $allowed, true)) {
+            return response()->json(['success' => false, 'message' => 'Invalid status provided'], 400);
+        }
+
+        $order = Order::find($orderId);
+        if (!$order) {
+            return response()->json(['success' => false, 'message' => 'Order not found'], 404);
+        }
+
+        try {
+            $order->status = $status;
+            $order->save();
+
+            return response()->json(['success' => true, 'message' => 'Order status updated', 'order' => $this->formatOrderForClient($order)]);
+        } catch (\Throwable $e) {
+            Log::error('Admin order status update failed: '.$e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Could not update order status'], 500);
+        }
     }
 }
