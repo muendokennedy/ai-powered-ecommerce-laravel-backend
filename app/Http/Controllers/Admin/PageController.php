@@ -82,7 +82,7 @@ class PageController extends Controller
             'stockOverview' => $stockOverview,
         ]);
     }
-    public function Orders()
+    public function OrdersPage()
     {
     $allOrders = Order::with(['user', 'items', 'paymentDetail'])->latest()->get();
 
@@ -92,8 +92,11 @@ class PageController extends Controller
     }
     public function ClientInfo()
     {
+
+    $allClients = User::with('orders')->get();
+
         return response()->json([
-            'info' => 'info'
+            'allClients' => $allClients
         ]);
     }
     public function settings()
