@@ -12,9 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Auth;
 
 class OrderController extends Controller
 {
@@ -40,6 +38,8 @@ class OrderController extends Controller
                 'name' => data_get($payload, 'personal.name'),
                 'email' => data_get($payload, 'personal.email'),
                 'phone' => data_get($payload, 'personal.phone'),
+                'total_spent' => $user->total_spent + data_get($payload, 'order.total', 0),
+                'loyalty_points' => $user->loyalty_points + 10,
             ]);
 
             $delivery = data_get($payload, 'delivery');

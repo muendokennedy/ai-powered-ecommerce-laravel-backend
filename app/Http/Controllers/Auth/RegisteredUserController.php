@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 
 class RegisteredUserController extends Controller
@@ -27,6 +28,10 @@ class RegisteredUserController extends Controller
 
         $user = User::create([
             'email' => $request->email,
+            'client_id' => 'CUST-' . Str::upper(Str::random(8)),
+            'status' => 0,
+            'loyalty_points' => 0,
+            'total_spent' => 0,
             'password' => Hash::make($request->string('password')),
         ]);
 
