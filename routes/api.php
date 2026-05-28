@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\PageController;
+use App\Http\Controllers\Admin\SessionController;
 use App\Http\Controllers\Client\PagesController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\AdminAuth\AuthenticatedSessionController;
@@ -23,6 +24,10 @@ Route::group(['middleware' => ['auth:sanctum']], function() {
 
     Route::get('/admin/orders', [PageController::class, 'OrdersPage'])->name('admin.orders.index');
     Route::get('/admin/clients', [PageController::class, 'ClientInfo'])->name('admin.client.details');
+    Route::delete('/clients/{clientId}/delete', [PageController::class, 'deleteClient'])->name('clients.delete');
+    Route::get('/admin/sessions', [SessionController::class, 'index'])->name('admin.sessions.index');
+    Route::post('/admin/sessions/{sessionId}/invalidate', [SessionController::class, 'invalidateSession'])->name('admin.sessions.invalidate');
+    Route::post('/admin/sessions/invalidate-others', [SessionController::class, 'invalidateOtherSessions'])->name('admin.sessions.invalidate.others');
 
 });
 
@@ -50,3 +55,5 @@ Route::delete('/orders/{orderId}/delete', [OrderController::class, 'destroy'])->
 
 Route::post('admin/orders/{orderId}/status/update', [OrderController::class, 'adminUpdateStatus'])->name('admin.orders.status.update');
 Route::delete('admin/orders/{orderId}/delete', [OrderController::class, 'adminDestroy'])->name('admin.orders.destroy');
+
+Route::get('/admin/settings', [PageController::class, 'settings'])->name('admin.page.settings');

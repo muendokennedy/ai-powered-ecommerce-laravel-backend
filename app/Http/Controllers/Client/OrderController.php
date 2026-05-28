@@ -38,6 +38,7 @@ class OrderController extends Controller
                 'name' => data_get($payload, 'personal.name'),
                 'email' => data_get($payload, 'personal.email'),
                 'phone' => data_get($payload, 'personal.phone'),
+                'status' => 1,
                 'total_spent' => $user->total_spent + data_get($payload, 'order.total', 0),
                 'loyalty_points' => $user->loyalty_points + 10,
             ]);
