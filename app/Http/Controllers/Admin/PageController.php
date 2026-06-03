@@ -91,9 +91,15 @@ class PageController extends Controller
     public function settings(Request $request)
     {
         $currentAuthenticatedAdmin = Admin::with('actions')->find($request->user('admin')->id);
-            // Delegate to SessionController to include devices and admins
-            $sessionController = app(SessionController::class);
-            return $sessionController->index($request);
+
+        $response = ['currentAuthenticatedAdmin' => $currentAuthenticatedAdmin];
+
+        // if primary admin, include full admins list
+        if ($currentAuthenticatedAdmin && strtolower($currentAuthenticatedAdmin->role) === 'primary admin') {
+            $response['admins'] = Admin::with('actions')->get();
+        }
+
+        return response()->json($response);
     }
 
     /** Delete a client (User) by id. Requires an authenticated admin. */

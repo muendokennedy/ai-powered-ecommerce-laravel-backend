@@ -43,19 +43,19 @@ class Admin extends Authenticatable
         'password',
         'remember_token',
     ];
-
     /**
-     * Get the attributes that should be cast.
+     * The attributes that should be cast to native types.
      *
-     * @return array<string, string>
+     * @var array<string,string>
      */
-    protected function casts(): array
-    {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
-    }
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password' => 'hashed',
+        'permissions' => 'array',
+        'preferences' => 'array',
+        'notifications' => 'array',
+        'active_since' => 'datetime',
+    ];
 
     public function actions(): HasMany
     {
