@@ -9,6 +9,8 @@ use App\Models\Product;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
+use App\Models\AdminActivity;
 
 class PageController extends Controller
 {
@@ -102,10 +104,62 @@ class PageController extends Controller
         return response()->json($response);
     }
 
+    /**
+     * Suspend an admin (set status to 0). Only primary admins may perform this.
+     */
+    public function suspendAdmin(Request $request, $adminId)
+    {
+        $actor = $request->user('admin') ?? auth('admin')->user();
+        if (!$actor) return response()->json(['success' => false, 'message' => 'Unauthenticated (admin)'], 401);
+        if (strtolower($actor->role) !== 'primary admin') return response()->json(['success' => false, 'message' => 'Only primary admin may perform this'], 403);
+
+        $target = Admin::find($adminId);
+        if (!$target) return response()->json(['success' => false, 'message' => 'Admin not found'], 404);
+        if (strtolower($target->role) === 'primary admin') return response()->json(['success' => false, 'message' => 'Cannot suspend primary admin'], 400);
+
+        try {
+            $target->status = 0;
+            $target->save();
+
+            AdminActivity::create([
+                'admin_id' => $target->id,
+                'action' => json_encode(['activity' => 'Account suspended by '.$actor->id, 'time' => now()->timestamp]),
+                'total_actions' => ($target->totalActions ?? 0),
+                'last_login' => $target->last_login ?? null,
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'Admin suspended']);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => 'Could not suspend admin'], 500);
+        }
+    }
+
+    /**
+     * Delete an admin. Only allowed when admin is already suspended (status = 0). Only primary admins may perform this.
+     */
+    public function deleteAdmin(Request $request, $adminId)
+    {
+        $actor = $request->user('admin') ?? auth('admin')->user();
+        if (!$actor) return response()->json(['success' => false, 'message' => 'Unauthenticated (admin)'], 401);
+        if (strtolower($actor->role) !== 'primary admin') return response()->json(['success' => false, 'message' => 'Only primary admin may perform this'], 403);
+
+        $target = Admin::find($adminId);
+        if (!$target) return response()->json(['success' => false, 'message' => 'Admin not found'], 404);
+        if (strtolower($target->role) === 'primary admin') return response()->json(['success' => false, 'message' => 'Cannot delete primary admin'], 400);
+        if ((int)$target->status !== 0) return response()->json(['success' => false, 'message' => 'Admin must be suspended before deletion'], 400);
+
+        try {
+            $target->delete();
+            return response()->json(['success' => true, 'message' => 'Admin deleted']);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => 'Could not delete admin'], 500);
+        }
+    }
+
     /** Delete a client (User) by id. Requires an authenticated admin. */
     public function deleteClient(Request $request, $clientId)
     {
-        $adminUser = $request->user('admin') ?? auth()->guard('admin')->user();
+        $adminUser = $request->user('admin') ?? auth('admin')->user();
         if (!$adminUser) {
             return response()->json(['success' => false, 'message' => 'Unauthenticated (admin)'], 401);
         }

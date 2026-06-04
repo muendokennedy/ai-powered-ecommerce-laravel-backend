@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\SessionController;
 use App\Http\Controllers\Client\PagesController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\AdminAuth\AuthenticatedSessionController;
+use App\Http\Controllers\AdminAuth\RegisteredUserController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\Client\OrderController;
 use Illuminate\Http\Request;
@@ -26,6 +27,9 @@ Route::group(['middleware' => ['auth:sanctum']], function() {
     Route::get('/admin/clients', [PageController::class, 'ClientInfo'])->name('admin.client.details');
     Route::delete('/clients/{clientId}/delete', [PageController::class, 'deleteClient'])->name('clients.delete');
     Route::get('/admin/settings', [PageController::class, 'settings'])->name('admin.page.settings');
+    Route::post('/admin/profile/edit', [RegisteredUserController::class, 'editProfile'])->name('admin.profile.edit');
+    Route::post('/admins/admin/suspend/{adminId}', [PageController::class, 'suspendAdmin'])->name('admin.suspend');
+    Route::post('/admins/admin/delete/{adminId}', [PageController::class, 'deleteAdmin'])->name('admin.delete');
 });
 
 Route::post('/cart/product/add/{product}', [CartController::class, 'addProduct'])->name('cart.product.add');

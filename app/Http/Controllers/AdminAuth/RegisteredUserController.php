@@ -106,4 +106,41 @@ class RegisteredUserController extends Controller
 
         return response(['admin' => $admin]);
     }
+
+    /**
+     * Edit currently authenticated admin's profile.
+     */
+    public function editProfile(Request $request)
+    {
+        $admin = $request->user('admin') ?? auth('admin')->user();
+        if (!$admin) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated (admin)'], 401);
+        }
+
+        $request->validate([
+            'fullName' => ['sometimes','string'],
+            'name' => ['sometimes','string'],
+            'email' => ['sometimes','email','max:255','unique:admins,email,'.$admin->id],
+            'phone' => ['sometimes','string'],
+            'department' => ['sometimes','string'],
+            'location' => ['sometimes','string'],
+            'profileImg' => ['sometimes','file','image','max:5120'],
+        ]);
+
+        if ($request->filled('fullName')) $admin->fullName = $request->input('fullName');
+        if ($request->filled('name')) $admin->fullName = $request->input('name');
+        if ($request->filled('email')) $admin->email = $request->input('email');
+        if ($request->filled('phone')) $admin->phone = $request->input('phone');
+        if ($request->filled('department')) $admin->department = $request->input('department');
+        if ($request->filled('location')) $admin->location = $request->input('location');
+
+        if ($request->hasFile('profileImg')) {
+            $path = $request->file('profileImg')->store('admins', 'public');
+            $admin->profileImg = Storage::url($path);
+        }
+
+        $admin->save();
+
+        return response()->json(['success' => true, 'admin' => $admin]);
+    }
 }
