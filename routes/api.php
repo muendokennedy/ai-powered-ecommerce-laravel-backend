@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Admin\PageController;
-use App\Http\Controllers\Admin\SessionController;
 use App\Http\Controllers\Client\PagesController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\AdminAuth\AuthenticatedSessionController;
@@ -18,6 +17,8 @@ Route::group(['middleware' => ['auth:sanctum']], function() {
         ]);
     })->name('admin.dashboard');
     Route::get('/admin/stock', [PageController::class, 'stock'])->name('admin.stock');
+    Route::get('/admin/dashboard', [PageController::class, 'Dashboard'])->name('admin.page.dashboard');
+    Route::get('/admin/analytics', [PageController::class, 'Analytics'])->name('admin.page.analytics');
     // Admin Product Resource Management
     Route::post('/admin/product/add', [ProductController::class, 'store'])->name('admin.product.add');
     Route::post('/admin/product/update/{product}', [ProductController::class, 'update'])->name('admin.product.update');

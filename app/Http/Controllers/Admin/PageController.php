@@ -11,30 +11,163 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use App\Models\AdminActivity;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class PageController extends Controller
 {
     public function Dashboard()
     {
-        $recentOrders = Order::latest()->limit(5)->get();
-        $lowStock = Product::where('status', 'low stock')->limit(4)->get();
-        $totalOrders = Order::all()->count();
-        $totalClients = User::all()->count();
-        $totalRevenue = '364536';
+        // recent orders with relationships (user, items, payment)
+        $recentOrders = Order::with(['user', 'items', 'paymentDetail'])->latest()->limit(5)->get();
+
+        // low stock products (include images when available)
+        $lowStock = Product::with('images')->whereRaw("LOWER(COALESCE(status,'') ) = 'in stock'")->limit(4)->get();
+
+        $totalOrders = Order::count();
+        $totalClients = User::count();
+        $totalProducts = Product::count();
+
+        // compute total revenue by summing order items total_price + shipping
+        $orders = Order::with('items')->get();
+        $totalRevenue = 0.0;
+        foreach ($orders as $o) {
+            $items = $o->items ?: collect([]);
+            $subtotal = $items->sum(function ($it) {
+                return (float) ($it->total_price ?? ((float) ($it->price_at_purchase ?? 0) * (int) ($it->quantity ?? 0)));
+            });
+            $shipping = (float) ($o->shipping_cost ?? 0);
+            $totalRevenue += $subtotal + $shipping;
+        }
+
+        // revenue this month and previous month for quick comparison
+        $now = Carbon::now();
+        $startOfMonth = $now->copy()->startOfMonth();
+        $startOfPrevMonth = $now->copy()->subMonthNoOverflow()->startOfMonth();
+        $endOfPrevMonth = $startOfMonth->copy()->subSecond();
+
+        $revenueThisMonth = 0.0;
+        $revenueLastMonth = 0.0;
+
+        $ordersThisMonth = Order::with('items')->whereBetween('created_at', [$startOfMonth, $now])->get();
+        foreach ($ordersThisMonth as $o) {
+            $revenueThisMonth += $o->items->sum(fn($it) => (float) ($it->total_price ?? ((float) ($it->price_at_purchase ?? 0) * (int) ($it->quantity ?? 0)))) + (float) ($o->shipping_cost ?? 0);
+        }
+
+        $ordersLastMonth = Order::with('items')->whereBetween('created_at', [$startOfPrevMonth, $endOfPrevMonth])->get();
+        foreach ($ordersLastMonth as $o) {
+            $revenueLastMonth += $o->items->sum(fn($it) => (float) ($it->total_price ?? ((float) ($it->price_at_purchase ?? 0) * (int) ($it->quantity ?? 0)))) + (float) ($o->shipping_cost ?? 0);
+        }
 
         return response()->json([
             'recentOrders' => $recentOrders,
             'lowStock' => $lowStock,
-            'totalProducts' => null,
+            'totalProducts' => $totalProducts,
             'totalOrders' => $totalOrders,
             'totalClients' => $totalClients,
-            'totalRevenue' => $totalRevenue,
+            'totalRevenue' => round($totalRevenue, 2),
+            'revenueThisMonth' => round($revenueThisMonth, 2),
+            'revenueLastMonth' => round($revenueLastMonth, 2),
         ]);
     }
 
     public function Analytics()
     {
-        return response()->json(['analytics' => 'analytics']);
+        // Build monthly aggregates for last 12 months
+        $now = Carbon::now();
+        $months = [];
+        for ($i = 11; $i >= 0; $i--) {
+            $m = $now->copy()->subMonths($i);
+            $months[] = $m->format('Y-m');
+        }
+
+        $revenueByMonth = [];
+        $ordersByMonth = [];
+        foreach ($months as $m) {
+            [$y, $mm] = explode('-', $m);
+            $start = Carbon::createFromFormat('Y-m-d H:i:s', "$y-$mm-01 00:00:00")->startOfMonth();
+            $end = $start->copy()->endOfMonth();
+
+            $orders = Order::with('items')->whereBetween('created_at', [$start, $end])->get();
+            $ordersCount = $orders->count();
+            $monthRevenue = 0.0;
+            foreach ($orders as $o) {
+                $monthRevenue += $o->items->sum(fn($it) => (float) ($it->total_price ?? ((float) ($it->price_at_purchase ?? 0) * (int) ($it->quantity ?? 0)))) + (float) ($o->shipping_cost ?? 0);
+            }
+
+            $revenueByMonth[] = ['month' => $m, 'total' => round($monthRevenue, 2)];
+            $ordersByMonth[] = ['month' => $m, 'count' => $ordersCount];
+        }
+
+        // Top products by quantity sold
+        $items = DB::table('order_items')
+            ->select('product_id', DB::raw('SUM(quantity) as total_qty'), DB::raw('SUM(total_price) as total_revenue'))
+            ->groupBy('product_id')
+            ->orderByDesc('total_qty')
+            ->limit(10)
+            ->get();
+
+        $topProducts = [];
+        foreach ($items as $it) {
+            $prod = Product::find($it->product_id);
+            if (!$prod) continue;
+            $topProducts[] = [
+                'id' => $prod->id,
+                'name' => $prod->name,
+                'sku' => $prod->product_sku_id ?? null,
+                'category' => $prod->category ?? null,
+                'sales' => (int) $it->total_qty,
+                'revenue' => round((float) $it->total_revenue, 2),
+            ];
+        }
+
+        // Sales by category
+        $categoryRows = DB::table('order_items')
+            ->join('products', 'order_items.product_id', '=', 'products.id')
+            ->select('products.category', DB::raw('SUM(order_items.total_price) as revenue'), DB::raw('SUM(order_items.quantity) as quantity'))
+            ->groupBy('products.category')
+            ->get();
+
+        $salesByCategory = [];
+        foreach ($categoryRows as $r) {
+            $salesByCategory[] = ['category' => $r->category ?? 'Uncategorized', 'revenue' => round((float) $r->revenue, 2), 'quantity' => (int) $r->quantity];
+        }
+
+        $totalOrders = Order::count();
+        $totalRevenue = 0.0;
+        foreach (Order::with('items')->get() as $o) {
+            $totalRevenue += $o->items->sum(fn($it) => (float) ($it->total_price ?? ((float) ($it->price_at_purchase ?? 0) * (int) ($it->quantity ?? 0)))) + (float) ($o->shipping_cost ?? 0);
+        }
+
+        $avgOrderValue = $totalOrders ? round($totalRevenue / $totalOrders, 2) : 0;
+
+        // orders per day (last 30 days)
+        $days = [];
+        for ($d = 29; $d >= 0; $d--) {
+            $date = Carbon::now()->subDays($d)->format('Y-m-d');
+            $days[] = $date;
+        }
+        $ordersPerDay = [];
+        foreach ($days as $day) {
+            $start = Carbon::createFromFormat('Y-m-d', $day)->startOfDay();
+            $end = Carbon::createFromFormat('Y-m-d', $day)->endOfDay();
+            $count = Order::whereBetween('created_at', [$start, $end])->count();
+            $ordersPerDay[] = ['date' => $day, 'count' => $count];
+        }
+
+        $clientsCount = User::count();
+
+        return response()->json([
+            'revenueByMonth' => $revenueByMonth,
+            'ordersByMonth' => $ordersByMonth,
+            'topProducts' => $topProducts,
+            'salesByCategory' => $salesByCategory,
+            'avgOrderValue' => $avgOrderValue,
+            'ordersPerDay' => $ordersPerDay,
+            'clientsCount' => $clientsCount,
+            'totalRevenue' => round($totalRevenue, 2),
+            'totalOrders' => $totalOrders,
+        ]);
     }
 
     public function stock()
