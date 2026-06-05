@@ -22,7 +22,7 @@ class PageController extends Controller
         $recentOrders = Order::with(['user', 'items', 'paymentDetail'])->latest()->limit(5)->get();
 
         // low stock products (include images when available)
-        $lowStock = Product::with('images')->whereRaw("LOWER(COALESCE(status,'') ) = 'in stock'")->limit(4)->get();
+        $lowStock = Product::with('images')->whereRaw("LOWER(COALESCE(status,'') ) = 'low stock'")->limit(4)->get();
 
         $totalOrders = Order::count();
         $totalClients = User::count();
@@ -99,7 +99,7 @@ class PageController extends Controller
             $ordersByMonth[] = ['month' => $m, 'count' => $ordersCount];
         }
 
-        // Top products by quantity sold
+        // Top products by quantity sold (overall) and compute growth/performance
         $items = DB::table('order_items')
             ->select('product_id', DB::raw('SUM(quantity) as total_qty'), DB::raw('SUM(total_price) as total_revenue'))
             ->groupBy('product_id')
@@ -111,13 +111,50 @@ class PageController extends Controller
         foreach ($items as $it) {
             $prod = Product::find($it->product_id);
             if (!$prod) continue;
+
+            // overall sold quantity
+            $soldTotal = (int) $it->total_qty;
+
+            // sales this month and last month
+            $startOfMonth = Carbon::now()->startOfMonth();
+            $startOfPrevMonth = Carbon::now()->subMonthNoOverflow()->startOfMonth();
+            $endOfPrevMonth = $startOfMonth->copy()->subSecond();
+
+            $salesThisMonth = (int) DB::table('order_items')
+                ->join('orders', 'order_items.order_id', '=', 'orders.id')
+                ->where('order_items.product_id', $prod->id)
+                ->whereBetween('orders.created_at', [$startOfMonth, Carbon::now()])
+                ->sum('order_items.quantity');
+
+            $salesLastMonth = (int) DB::table('order_items')
+                ->join('orders', 'order_items.order_id', '=', 'orders.id')
+                ->where('order_items.product_id', $prod->id)
+                ->whereBetween('orders.created_at', [$startOfPrevMonth, $endOfPrevMonth])
+                ->sum('order_items.quantity');
+
+            // growth: percent change from last month to this month
+            if ($salesLastMonth > 0) {
+                $growth = round((($salesThisMonth - $salesLastMonth) / $salesLastMonth) * 100, 2);
+            } else {
+                $growth = $salesThisMonth > 0 ? 100.0 : 0.0;
+            }
+
+            // performance: sold across orders / stock_quantity * 100 (guard against zero stock)
+            $stockQty = (int) ($prod->stock_quantity ?? 0);
+            $performance = $stockQty > 0 ? round((($soldTotal / $stockQty) * 100), 2) : 0.0;
+
             $topProducts[] = [
                 'id' => $prod->id,
                 'name' => $prod->name,
                 'sku' => $prod->product_sku_id ?? null,
                 'category' => $prod->category ?? null,
-                'sales' => (int) $it->total_qty,
+                'sales' => $soldTotal,
                 'revenue' => round((float) $it->total_revenue, 2),
+                'salesThisMonth' => $salesThisMonth,
+                'salesLastMonth' => $salesLastMonth,
+                'growth' => $growth,
+                'performance' => $performance,
+                'stock_on_hand' => $stockQty,
             ];
         }
 
@@ -129,8 +166,11 @@ class PageController extends Controller
             ->get();
 
         $salesByCategory = [];
+        $catTotalRevenue = array_reduce($categoryRows->toArray(), function ($carry, $r) { return $carry + (float) $r->revenue; }, 0.0);
         foreach ($categoryRows as $r) {
-            $salesByCategory[] = ['category' => $r->category ?? 'Uncategorized', 'revenue' => round((float) $r->revenue, 2), 'quantity' => (int) $r->quantity];
+            $rev = round((float) $r->revenue, 2);
+            $pct = $catTotalRevenue > 0 ? round(($rev / $catTotalRevenue) * 100, 2) : 0.0;
+            $salesByCategory[] = ['category' => $r->category ?? 'Uncategorized', 'revenue' => $rev, 'quantity' => (int) $r->quantity, 'percentage' => $pct];
         }
 
         $totalOrders = Order::count();
@@ -140,6 +180,34 @@ class PageController extends Controller
         }
 
         $avgOrderValue = $totalOrders ? round($totalRevenue / $totalOrders, 2) : 0;
+
+        // New clients by month for charting
+        $newClientsByMonth = [];
+        foreach ($months as $m) {
+            [$y, $mm] = explode('-', $m);
+            $start = Carbon::createFromFormat('Y-m-d H:i:s', "$y-$mm-01 00:00:00")->startOfMonth();
+            $end = $start->copy()->endOfMonth();
+            $count = User::whereBetween('created_at', [$start, $end])->count();
+            $newClientsByMonth[] = ['month' => $m, 'count' => $count];
+        }
+
+        // New clients this month and conversion (new clients who have delivered orders)
+        $startOfMonth = Carbon::now()->startOfMonth();
+        $newClientsThisMonth = User::whereBetween('created_at', [$startOfMonth, Carbon::now()])->count() ?: User::count(); // fallback to total count if monthly count is zero to avoid division by zero in conversion <rate></rate>
+        $newClientsWithDeliveredOrdersThisMonth = User::whereBetween('created_at', [$startOfMonth, Carbon::now()])
+            ->whereHas('orders', fn($q) => $q->where('status', 'delivered'))
+            ->count() ?: User::whereHas('orders', fn($q) => $q->where('status', 'delivered'))->count(); // fallback to total count if monthly count is zero
+
+        $conversionRate = $newClientsThisMonth > 0 ? round(($newClientsWithDeliveredOrdersThisMonth / $newClientsThisMonth) * 100, 2) : 0.0;
+
+        info('Conversion Rate: '. $conversionRate);
+        info('New Clients This Month: '. $newClientsThisMonth);
+        info('New Clients With Delivered Orders This Month: '. $newClientsWithDeliveredOrdersThisMonth);
+        info('start of the month: '. $startOfMonth);
+
+
+        // Active sessions: orders placed but not yet delivered nor cancelled
+        $activeSessions = Order::whereNotIn('status', ['delivered', 'cancelled', 'canceled'])->count();
 
         // orders per day (last 30 days)
         $days = [];
@@ -165,6 +233,11 @@ class PageController extends Controller
             'avgOrderValue' => $avgOrderValue,
             'ordersPerDay' => $ordersPerDay,
             'clientsCount' => $clientsCount,
+            'newClientsByMonth' => $newClientsByMonth,
+            'newClientsThisMonth' => $newClientsThisMonth,
+            'newClientsWithDeliveredOrdersThisMonth' => $newClientsWithDeliveredOrdersThisMonth,
+            'conversionRate' => $conversionRate,
+            'activeSessions' => $activeSessions,
             'totalRevenue' => round($totalRevenue, 2),
             'totalOrders' => $totalOrders,
         ]);
