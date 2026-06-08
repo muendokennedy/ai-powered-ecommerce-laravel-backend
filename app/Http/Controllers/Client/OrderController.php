@@ -141,10 +141,14 @@ class OrderController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
         }
 
+        info($user);
+
         $orders = Order::with(['items.product.images', 'paymentDetail'])
             ->where('user_id', $user->id)
             ->orderBy('created_at', 'desc')
             ->get();
+
+        info($orders);
 
         $payload = $orders->map(fn($order) => $this->formatOrderForClient($order));
 

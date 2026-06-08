@@ -11,11 +11,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::group(['middleware' => ['auth:sanctum']], function() {
-    Route::get('/admin/dashboard', function(Request $request){
-        return response()->json([
-        'admin' => $request->user()
-        ]);
-    })->name('admin.dashboard');
     Route::get('/admin/stock', [PageController::class, 'stock'])->name('admin.stock');
     Route::get('/admin/dashboard', [PageController::class, 'Dashboard'])->name('admin.page.dashboard');
     Route::get('/admin/analytics', [PageController::class, 'Analytics'])->name('admin.page.analytics');
@@ -47,6 +42,9 @@ Route::get('/products/{productId}/related', [PagesController::class, 'RelatedPro
 Route::post('admin/logout', [AuthenticatedSessionController::class, 'destroy'])
     ->middleware('auth:sanctum')
     ->name('logout');
+Route::post('logout', [\App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'destroy'])
+    ->middleware('auth:sanctum')
+    ->name('client.logout');
 
 Route::post('/checkout', [OrderController::class, 'store'])->name('client.order.checkout');
 

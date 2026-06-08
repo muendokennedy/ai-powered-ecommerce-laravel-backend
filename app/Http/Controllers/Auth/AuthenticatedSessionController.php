@@ -32,6 +32,8 @@ class AuthenticatedSessionController extends Controller
     {        
         Auth::guard('web')->logout();
 
+        info('The user has been logged out' . $request->user());
+
         $request->session()->invalidate();
 
         $request->session()->regenerateToken();

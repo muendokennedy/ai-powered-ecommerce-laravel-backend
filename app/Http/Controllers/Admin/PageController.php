@@ -60,6 +60,7 @@ class PageController extends Controller
         }
 
         return response()->json([
+            'authenticatedAdmin' => Auth::guard('admin')->user(),
             'recentOrders' => $recentOrders,
             'lowStock' => $lowStock,
             'totalProducts' => $totalProducts,
@@ -226,6 +227,7 @@ class PageController extends Controller
         $clientsCount = User::count();
 
         return response()->json([
+            'authenticatedAdmin' => Auth::guard('admin')->user(),
             'revenueByMonth' => $revenueByMonth,
             'ordersByMonth' => $ordersByMonth,
             'topProducts' => $topProducts,
@@ -281,19 +283,19 @@ class PageController extends Controller
             ->sortBy('category')
             ->values();
 
-        return response()->json(['products' => $products, 'stockOverview' => $stockOverview]);
+        return response()->json(['products' => $products, 'stockOverview' => $stockOverview, 'authenticatedAdmin' => Auth::guard('admin')->user(),]);
     }
 
     public function OrdersPage()
     {
         $allOrders = Order::with(['user', 'items', 'paymentDetail'])->latest()->get();
-        return response()->json(['allOrders' => $allOrders]);
+        return response()->json(['allOrders' => $allOrders, 'authenticatedAdmin' => auth('admin')->user()]);
     }
 
     public function ClientInfo()
     {
         $allClients = User::with('orders.items')->get();
-        return response()->json(['allClients' => $allClients]);
+        return response()->json(['allClients' => $allClients, 'authenticatedAdmin' => auth('admin')->user()]);
     }
 
     public function settings(Request $request)

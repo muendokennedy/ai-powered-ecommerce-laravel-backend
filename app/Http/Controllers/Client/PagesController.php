@@ -176,11 +176,10 @@ class PagesController extends Controller
 
     public function OrdersPage()
     {
-
-    $allOrders = Order::with(['user', 'items', 'paymentDetail'])->latest()->get();
+    $ordersForCurrentlyAuthenticatedUser = Order::with(['items', 'user', 'paymentDetail'])->where('user_id', auth('web')->id())->latest()->get();
 
       return response()->json([
-        'allOrders' => $allOrders
+        'ordersForCurrentlyAuthenticatedUser' => $ordersForCurrentlyAuthenticatedUser
       ]);
     }
 }
