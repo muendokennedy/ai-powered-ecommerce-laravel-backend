@@ -315,7 +315,7 @@ class PageController extends Controller
     /**
      * Suspend an admin (set status to 0). Only primary admins may perform this.
      */
-    public function suspendAdmin(Request $request, $adminId)
+    public function updateAdminStatus(Request $request, $adminId)
     {
         $actor = $request->user('admin') ?? auth('admin')->user();
         if (!$actor) return response()->json(['success' => false, 'message' => 'Unauthenticated (admin)'], 401);
@@ -326,17 +326,27 @@ class PageController extends Controller
         if (strtolower($target->role) === 'primary admin') return response()->json(['success' => false, 'message' => 'Cannot suspend primary admin'], 400);
 
         try {
-            $target->status = 0;
-            $target->save();
 
-            AdminActivity::create([
-                'admin_id' => $target->id,
-                'action' => json_encode(['activity' => 'Account suspended by '.$actor->id, 'time' => now()->timestamp]),
-                'total_actions' => ($target->totalActions ?? 0),
-                'last_login' => $target->last_login ?? null,
-            ]);
-
-            return response()->json(['success' => true, 'message' => 'Admin suspended']);
+                if($request->status === 'Active'){
+                    $target->status = 1;    
+                    $target->save();
+                    AdminActivity::create([
+                        'admin_id' => $actor->id,
+                        'action' => json_encode(['activity' => 'Activated account of admin '. $target->name, 'time' => now()->timestamp]),
+                        'total_actions' => ($actor->totalActions ?? 0),
+                        'last_login' => $actor->last_login ?? null,
+                    ]);
+                } else if($request->status === 'Inactive') {
+                    $target->status = 0;
+                    $target->save();
+                    AdminActivity::create([
+                        'admin_id' => $actor->id,
+                        'action' => json_encode(['activity' => 'Suspended account of admin '. $target->name, 'time' => now()->timestamp]),
+                        'total_actions' => ($actor->totalActions ?? 0),
+                        'last_login' => $actor->last_login ?? null,
+                    ]);
+                }
+                return response()->json(['success' => true, 'message' => 'Admin status updated']);
         } catch (\Throwable $e) {
             return response()->json(['success' => false, 'message' => 'Could not suspend admin'], 500);
         }

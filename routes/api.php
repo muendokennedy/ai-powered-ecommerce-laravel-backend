@@ -24,7 +24,7 @@ Route::group(['middleware' => ['auth:sanctum']], function() {
     Route::delete('/clients/{clientId}/delete', [PageController::class, 'deleteClient'])->name('clients.delete');
     Route::get('/admin/settings', [PageController::class, 'settings'])->name('admin.page.settings');
     Route::post('/admin/profile/edit', [RegisteredUserController::class, 'editProfile'])->name('admin.profile.edit');
-    Route::post('/admins/admin/suspend/{adminId}', [PageController::class, 'suspendAdmin'])->name('admin.suspend');
+    Route::post('/admins/admin/status/change/{adminId}', [PageController::class, 'updateAdminStatus'])->name('admin.status.update');
     Route::post('/admins/admin/delete/{adminId}', [PageController::class, 'deleteAdmin'])->name('admin.delete');
 });
 
