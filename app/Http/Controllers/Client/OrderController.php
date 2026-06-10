@@ -334,4 +334,5 @@ class OrderController extends Controller
             return response()->json(['success' => false, 'message' => 'Could not update order status'], 500);
         }
     }
+
 }

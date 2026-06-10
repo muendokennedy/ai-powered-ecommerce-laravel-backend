@@ -56,4 +56,4 @@ Route::delete('/orders/{orderId}/delete', [OrderController::class, 'destroy'])->
 Route::post('admin/orders/{orderId}/status/update', [OrderController::class, 'adminUpdateStatus'])->name('admin.orders.status.update');
 Route::delete('admin/orders/{orderId}/delete', [OrderController::class, 'adminDestroy'])->name('admin.orders.destroy');
 
-
+Route::post('admins/{adminId}/update', [RegisteredUserController::class, 'updateAdminDetails'])->name('admins.details.update');
