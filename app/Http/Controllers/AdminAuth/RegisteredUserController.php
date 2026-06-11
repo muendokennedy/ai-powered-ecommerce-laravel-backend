@@ -48,18 +48,17 @@ class RegisteredUserController extends Controller
                 'operations' => 'enabled',
                 'customer_management' => 'enabled',
                 'stock_management' => 'enabled',
-                'reports' => 'enabled',
+                'admin_management' => 'enabled',
             ];
         } elseif ($request->filled('permissions')) {
             // accept provided permissions (assume JSON string or array)
             $permissions = is_string($request->permissions) ? json_decode($request->permissions, true) : $request->permissions;
-        } elseif (strtolower($request->input('department', '')) === 'operations' || $request->input('permission_area') === 'operations') {
+        } elseif (strtolower($request->input('department'))) {
             // department-level default for operations team
             $permissions = [
-                'operations' => 'enabled',
-                'stock_management' => 'enabled',
-                'customer_management' => 'enabled',
-                'reports' => 'enabled',
+                'operations' => 'disabled',
+                'stock_management' => 'disabled',
+                'customer_management' => 'disabled',
             ];
         }
 
@@ -145,150 +144,85 @@ class RegisteredUserController extends Controller
     }
 
     public function updateAdminDetails(Request $request, $adminId)
-{
-    $currentAdmin = $request->user('admin');
+    {
+        $currentAdmin = $request->user('admin');
 
-    if (!$currentAdmin) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Unauthorized'
-        ], 401);
-    }
-
-    $admin = Admin::find($adminId);
-
-    if (!$admin) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Admin not found'
-        ], 404);
-    }
-
-    $isSelfUpdate = (int) $currentAdmin->id === (int) $adminId;
-    $isPrimaryAdmin = $currentAdmin->role === 'primary admin';
-
-    /*
-    |--------------------------------------------------------------------------
-    | Authorization
-    |--------------------------------------------------------------------------
-    | - Admins can update their own details
-    | - Primary admins can update other admins
-    | - Secondary admins cannot update others
-    */
-
-    if (!$isSelfUpdate && !$isPrimaryAdmin) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Unauthorized to update this admin'
-        ], 403);
-    }
-
-    $request->validate([
-        'permissions' => ['sometimes'],
-        'preferences' => ['sometimes'],
-        'notifications' => ['sometimes'],
-    ]);
-
-    /*
-    |--------------------------------------------------------------------------
-    | Update Permissions
-    |--------------------------------------------------------------------------
-    | Rules:
-    | - Secondary admins can edit their own permissions
-    | - Primary admins can edit other admins' permissions
-    | - Primary admins CANNOT edit their own permissions
-    */
-
-    if ($request->has('permissions')) {
-
-        // Prevent primary admin from changing own permissions
-        if ($isSelfUpdate && $isPrimaryAdmin) {
+        if(!$currentAdmin){
             return response()->json([
                 'success' => false,
-                'message' => 'Primary admins cannot update their own permissions because they already have all permissions.'
+                'message' => 'Unauthorized'
+            ], 401);
+        }
+        $admin = Admin::find($adminId);
+
+        if(!$admin){
+            return response()->json([
+                'success' => false,
+                'message' => 'Admin not found'
+            ], 404);
+        }
+
+        $isSelfUpdate = (int)$currentAdmin->id === (int)$adminId;
+        $isPrimaryAdmin = $currentAdmin->role === 'primary admin';
+
+        if(!$isSelfUpdate && !$isPrimaryAdmin){
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized to update this admin'
             ], 403);
         }
 
-        // Prevent non-primary admins from updating others
-        if (!$isSelfUpdate && !$isPrimaryAdmin) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Only primary admins can update permissions of other admins.'
-            ], 403);
-        }
+        $request->validate([
+            'permissions' => ['sometimes', 'json'],
+            'preferences' => ['sometimes', 'json'],
+            'notifications' => ['sometimes', 'json']
+        ]);
 
-        $permissions = $request->permissions;
-
-        if (is_string($permissions)) {
-            $permissions = json_decode($permissions, true);
-
-            if (json_last_error() !== JSON_ERROR_NONE) {
+        if($request->has('permissions')){
+            if($isSelfUpdate && $isPrimaryAdmin){
                 return response()->json([
                     'success' => false,
-                    'message' => 'Invalid permissions JSON format.'
-                ], 422);
+                    'message' => 'Primary admins are not allowed to update their own permissions as they already have all permissions.'
+                ], 403);
             }
-        }
-
-        $admin->permissions = $permissions;
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Update Preferences
-    |--------------------------------------------------------------------------
-    */
-
-    if ($request->has('preferences')) {
-        $preferences = $request->preferences;
-
-        if (is_string($preferences)) {
-            $preferences = json_decode($preferences, true);
-
-            if (json_last_error() !== JSON_ERROR_NONE) {
+            if(!$isSelfUpdate && !$isPrimaryAdmin){
                 return response()->json([
                     'success' => false,
-                    'message' => 'Invalid preferences JSON format.'
-                ], 422);
+                    'message' => 'Only primary admin can udpate permission of other admins.'
+                ], 403);
             }
+
+            $permissions = $request->permissions;
+
+            if(is_string($permissions)){
+                $permissions = json_decode($permissions, true);
+            }
+
+            $admin->permissions = $permissions;
         }
 
-        $admin->preferences = $preferences;
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Update Notifications
-    |--------------------------------------------------------------------------
-    */
-
-    if ($request->has('notifications')) {
-        $notifications = $request->notifications;
-
-        if (is_string($notifications)) {
-            $notifications = json_decode($notifications, true);
-
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid notifications JSON format.'
-                ], 422);
+        if($request->has('preferences')){
+            $preferences = $request->preferences;
+            if(is_string($preferences)){
+                $preferences = json_decode($preferences, true);
             }
+            $admin->preferences = $preferences;
         }
 
-        $admin->notifications = $notifications;
+        if($request->has('notifications')){
+            $notifications = $request->notifications;
+            if(is_string($notifications)){
+                $notifications = json_decode($notifications, true);
+            }
+            $admin->notifications = $notifications;
+        }
+        $admin->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Admin details updated successfully',
+            'admin' => $admin->fresh()
+        ]);
     }
-
-    $admin->save();
-
-    return response()->json([
-        'success' => true,
-        'message' => 'Admin details updated successfully',
-        'admin' => $admin->fresh()
-    ]);
 }
 
-    // public function updateAdminDetails(Request $request, $adminId)
-    // {
-    // }
-}
