@@ -333,8 +333,8 @@ class PageController extends Controller
                     AdminActivity::create([
                         'admin_id' => $actor->id,
                         'action' => json_encode(['activity' => 'Activated account of admin '. $target->name, 'time' => now()->timestamp]),
-                        'total_actions' => ($actor->totalActions ?? 0),
-                        'last_login' => $actor->last_login ?? null,
+                        'total_actions' => AdminActivity::where('admin_id', $actor->id)->count() + 1,
+                        'last_login' => null,
                     ]);
                 } else if($request->status === 'Inactive') {
                     $target->status = 0;
@@ -342,8 +342,8 @@ class PageController extends Controller
                     AdminActivity::create([
                         'admin_id' => $actor->id,
                         'action' => json_encode(['activity' => 'Suspended account of admin '. $target->name, 'time' => now()->timestamp]),
-                        'total_actions' => ($actor->totalActions ?? 0),
-                        'last_login' => $actor->last_login ?? null,
+                        'total_actions' => AdminActivity::where('admin_id', $actor->id)->count() + 1,
+                        'last_login' => null,
                     ]);
                 }
                 return response()->json(['success' => true, 'message' => 'Admin status updated']);
@@ -378,8 +378,13 @@ class PageController extends Controller
     public function deleteClient(Request $request, $clientId)
     {
         $adminUser = $request->user('admin') ?? auth('admin')->user();
+
         if (!$adminUser) {
             return response()->json(['success' => false, 'message' => 'Unauthenticated (admin)'], 401);
+        }
+
+        if($adminUser->permissions['customer_management'] !== 'enabled') {
+            return response()->json(['success' => false, 'message' => 'You do not have permission to manage customers'], 403);
         }
 
         $client = User::find($clientId);
@@ -387,6 +392,14 @@ class PageController extends Controller
 
         try {
             $client->delete();
+
+                 AdminActivity::create([
+                        'admin_id' => $adminUser->id,
+                        'action' => json_encode(['activity' => 'Deleted client '. $client->client_id, 'time' => now()->timestamp]),
+                        'total_actions' => AdminActivity::where('admin_id', $adminUser->id)->count() + 1,
+                        'last_login' => null,
+                    ]);
+
             return response()->json(['success' => true, 'message' => 'Client deleted']);
         } catch (\Throwable $e) {
             return response()->json(['success' => false, 'message' => 'Could not delete client'], 500);

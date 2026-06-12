@@ -25,17 +25,15 @@ class AuthenticatedSessionController extends Controller
 
         // update admin activity last_login to now(), create record if missing
         try {
-            $updated = AdminActivity::where('admin_id', $admin->id)->update(['last_login' => now()]);
-            if (!$updated) {
-                AdminActivity::create([
-                    'admin_id' => $admin->id,
-                    'action' => json_encode(['activity' => 'Logged in', 'time' => now()->timestamp]),
-                    'total_actions' => 1,
-                    'last_login' => now(),
-                ]);
-            }
+            AdminActivity::create([
+                'admin_id' => $admin->id,
+                'action' => json_encode(['activity' => 'Logged in', 'time' => now()->timestamp]),
+                'total_actions' => AdminActivity::where('admin_id', $adminUser->id)->count() + 1,
+                'last_login' => now(),
+            ]);
+            
         } catch (\Exception $e) {
-            // ignore activity update errors
+            
         }
 
         return response(['admin' => $admin, 'session_id' => $request->session()->getId()]);
