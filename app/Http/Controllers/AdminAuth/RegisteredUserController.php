@@ -173,9 +173,9 @@ class RegisteredUserController extends Controller
         }
 
         $request->validate([
-            'permissions' => ['sometimes', 'json'],
-            'preferences' => ['sometimes', 'json'],
-            'notifications' => ['sometimes', 'json']
+            'permissions' => ['sometimes'],
+            'preferences' => ['sometimes'],
+            'notifications' => ['sometimes']
         ]);
 
         if($request->has('permissions')){

@@ -28,12 +28,12 @@ class AuthenticatedSessionController extends Controller
             AdminActivity::create([
                 'admin_id' => $admin->id,
                 'action' => json_encode(['activity' => 'Logged in', 'time' => now()->timestamp]),
-                'total_actions' => AdminActivity::where('admin_id', $adminUser->id)->count() + 1,
+                'total_actions' => AdminActivity::where('admin_id', $admin->id)->count() + 1,
                 'last_login' => now(),
             ]);
             
         } catch (\Exception $e) {
-            
+            info($e->getMessage());
         }
 
         return response(['admin' => $admin, 'session_id' => $request->session()->getId()]);
